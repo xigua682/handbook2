@@ -1,0 +1,8 @@
+# 明文絕不能進這個公開 repo
+*明文*
+*plain*.html
+handbook2-src/
+src/
+node_modules/
+*.png
+.DS_Store
