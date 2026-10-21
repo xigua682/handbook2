@@ -21,16 +21,24 @@ async function run(browser,file,tag){const ctx=await browser.createBrowserContex
  await sleep(800);
  const has=await pg.$('#t5r-cyc');ok(opened&&!!has,`[${tag}] 打開 T+5 錄音範例卡片`);
  const r={tag,shots,errs};
- if(has){await shot('t5_off');await pg.click('#t5r-cyc');await sleep(400);await shot('t5_on');
+ if(has){const set=async(id,v)=>{await pg.$eval('#'+id,(e,v)=>{e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}))},v)};
+  await set('t5r-loan','640,000');await sleep(300);await shot('t5_off');await pg.click('#t5r-cyc');await sleep(400);await shot('t5_on');
   r.pos=await pg.evaluate(()=>document.getElementById('sheet-body').innerText);
-  const set=async(id,v)=>{await pg.$eval('#'+id,(e,v)=>{e.value=v;e.dispatchEvent(new Event('input',{bubbles:true}))},v)};
   await set('t5r-cbuy','1,000,000');await set('t5r-csell','1,242,973');await sleep(400);await shot('t5_neg');
-  r.neg=await pg.evaluate(()=>document.getElementById('sheet-body').innerText);}
+  r.neg=await pg.evaluate(()=>document.getElementById('sheet-body').innerText);
+  await set('t5r-csell','2,000,000');await sleep(400);await shot('t5_sellpos');
+  r.sellpos=await pg.evaluate(()=>document.getElementById('sheet-body').innerText);
+  if(await pg.$('#t5r-cadv')){await set('t5r-cadv','500,000');await sleep(300);r.ovr=await pg.$eval('#t5r-cfee',e=>e.value);
+   await set('t5r-cadv','');await sleep(300);r.clr=await pg.$eval('#t5r-cadv',e=>e.value);}}
  await ctx.close();return r}
 (async()=>{const b=await pp.launch({executablePath:process.env.CHROME||'/usr/bin/google-chrome',args:['--no-sandbox','--allow-file-access-from-files']});
  const A=await run(b,cand,'new'),B=await run(b,ref,'live');await b.close();
  ok(A.errs.length===0,'新版無 JS 錯誤 '+A.errs.join(';').slice(0,200));
- if(A.pos){ok(A.pos.includes('原買超淨付金額為')&&A.pos.includes('2,042,910')&&A.pos.includes('112')&&A.pos.includes('2,683,022'),'正數：淨付 2,042,910、手續費 112、差額 2,683,022');
+ if(A.pos){ok(A.pos.includes('借款金額為 2,682,000')&&A.pos.includes('2,682,000 元'),'可借金額 2,682,000（借款金額 640,000 → 代墊款自動帶入）');
+  ok(A.sellpos.includes('剩餘款項359,888元將於')&&A.sellpos.includes('匯入您的交割帳戶')&&!A.sellpos.includes('跟您收取'),'賣超有剩餘：剩餘款項 359,888 元 T+3 匯入');
+  ok(A.neg.includes('跟您收取差額款項397,139元')&&!A.neg.includes('剩餘款項3'),'賣超不足：維持收取差額 397,139');
+  ok(A.ovr==='88'&&A.clr==='640,000','代墊款可手動覆蓋（500,000→手續費 88），清空回到自動 640,000');
+  ok(A.pos.includes('原買超淨付金額為')&&A.pos.includes('2,042,910')&&A.pos.includes('112')&&A.pos.includes('2,683,022'),'正數：淨付 2,042,910、手續費 112、差額 2,683,022');
   ok(A.neg.includes('原賣超淨收金額為')&&A.neg.includes('242,973')&&!A.neg.includes('-242,973'),'負數：顯示「原賣超淨收金額為 242,973」');
   if(!process.env.ALLOW_VISUAL_DIFF)ok(A.pos===B.pos&&A.neg===B.neg,'計算結果文字與線上版完全相同');}
  for(const n of Object.keys(B.shots)){if(!A.shots[n]){ok(false,'缺截圖 '+n);continue}
